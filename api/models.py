@@ -81,20 +81,20 @@ class Product(db.Model):
     def __repr__(self):
         return f'<Product {self.product_name} selling at Ksh{self.price}>'
 
+# you have to create a cart table
 
 class Order(db.Model):
     __tablename__ = 'orders'
 
     order_id = db.Column(db.Integer(), primary_key=True)
     quantity = db.Column(db.Integer(), nullable=False)
-    price = db.Column(db.Float(), nullable=False)
-    status = db.Column(db.Enum(OrderStatus), nullable=False)
-    purchase_order_number = db.Column(db.Integer(), nullable=False)
-    time_order_taken = db.Column(db.DateTime(), default=datetime.now())
+    status = db.Column(db.Enum(OrderStatus), nullable=False, default='PENDING') # default='PENDING'
 
     customer_link = db.Column(db.Integer(), db.ForeignKey('customers.cust_id'))
     staff_link = db.Column(db.Integer(), db.ForeignKey('staff.staff_id'))
     product_link = db.Column(db.Integer(), db.ForeignKey('products.product_id'))
+
+    time_order_taken = db.Column(db.DateTime(), default=datetime.now())
 
     def save(self):
         db.session.add(self)
