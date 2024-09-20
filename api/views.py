@@ -1,7 +1,7 @@
 from flask import request, jsonify, make_response
 from http import HTTPStatus
 from flask_restx import Resource, Namespace, fields
-from .models import Product, Order, Customer
+from .models import Product, Order
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 customer = Namespace('Customer', description='Customer Namespace')

@@ -1,6 +1,6 @@
 from flask_restx import Namespace, fields, Resource
 from flask import request, jsonify
-from .models import Staff, Customer
+from .models import User
 from http import HTTPStatus
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, create_refresh_token
@@ -54,8 +54,8 @@ class StaffSignUp(Resource):
         """Staff SignUp"""
         data = request.get_json()
 
-        staff_name = Staff.query.filter_by(staff_name=data.get('staff_name')).first()
-        email = Staff.query.filter_by(email=data.get('email')).first()
+        staff_name = User.query.filter_by(staff_name=data.get('staff_name')).first()
+        email = User.query.filter_by(email=data.get('email')).first()
 
         if staff_name:
             return make_response(jsonify({'error': f'Staff name: {data.get("staff_name")} already exists!'}), HTTPStatus.NOT_FOUND)
@@ -72,7 +72,7 @@ class StaffSignUp(Resource):
         if len(data.get('password')) < 6:
             return make_response(jsonify({'error': 'Your password is too short!'}), HTTPStatus.PRECONDITION_FAILED)
 
-        staff = Staff(
+        staff = User(
             staff_name=data.get('staff_name'),
             email=data.get('email'),
             phone=data.get('phone'),
@@ -93,7 +93,7 @@ class StaffLogin(Resource):
         email = request.json['email']
         password = request.json['password']
 
-        staff = Staff.query.filter_by(email=email).first()
+        staff = User.query.filter_by(email=email).first()
 
         if staff and check_password_hash(staff.password_hash, password):
             access_token = create_access_token(identity=staff.staff_id)
@@ -119,8 +119,8 @@ class CustomerSignUp(Resource):
 
         data = request.get_json()
 
-        customer_name = Customer.query.filter_by(customer_name=data.get('customer_name')).first()
-        email = Customer.query.filter_by(email=data.get('email')).first()
+        customer_name = User.query.filter_by(customer_name=data.get('customer_name')).first()
+        email = User.query.filter_by(email=data.get('email')).first()
 
         if customer_name:
             return make_response(jsonify({'error': f'Customer name {data.get("customer_name")} already exists!'}), HTTPStatus.BAD_REQUEST)
@@ -134,7 +134,7 @@ class CustomerSignUp(Resource):
         except EmailNotValidError as e:
             return make_response(jsonify({'error': str(e)}), HTTPStatus.UNPROCESSABLE_ENTITY)
 
-        customer = Customer(
+        customer = User(
             customer_name = data.get('customer_name'),
             email=data.get('email'),
             phone=data.get('phone'),
@@ -158,7 +158,7 @@ class CustomerLogin(Resource):
         email = data.get('email')
         password = data.get('password')
 
-        customer = Customer.query.filter_by(email=email).first()
+        customer = User.query.filter_by(email=email).first()
 
         if customer and check_password_hash(customer.password_hash, password):
             access_token = create_access_token(identity=customer.cust_id)

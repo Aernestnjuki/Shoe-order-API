@@ -2,7 +2,7 @@ from flask import Flask
 from flask_restx import Api
 from .config import config_dict
 from .utils import db
-from .models import Staff, Customer, Product, Order
+from .models import User, Product, Order, Cart
 from flask_jwt_extended import JWTManager
 
 
@@ -30,9 +30,9 @@ def create_app(configuration=config_dict['Dev']):
     def make_shell_processor():
         return {
             'db': db,
-            'staff': Staff,
-            'customer': Customer,
+            'user': User,
             'product': Product,
+            'cart': Cart,
             'order': Order
         }
 
