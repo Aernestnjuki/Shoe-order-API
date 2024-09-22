@@ -3,62 +3,47 @@ from flask import request, jsonify
 from .models import User
 from http import HTTPStatus
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token, create_refresh_token
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from flask import make_response
 from email_validator import validate_email, EmailNotValidError
 
 auth = Namespace('Auth', description='Auth Namespace')
 
-staff_signup_model = auth.model(
-    'Staff Signup Model',
+user_signup_model = auth.model(
+    'User Signup Model',
     {
-        'staff_name': fields.String(required=True, description='Enter staff name'),
+        'user_name': fields.String(required=True, description='Enter username'),
         'email': fields.String(required=True, description='Enter email'),
         'phone': fields.Integer(required=True, description='Enter phone number'),
+        'admin': fields.Integer(required=True),
         'password': fields.String(required=True, description='Enter password')
     }
 )
 
 
-staff_login_model = auth.model(
-    'Staff Login Model',
+user_login_model = auth.model(
+    'User Login Model',
     {
         "email": fields.String(required=True, description='Enter Email'),
         "password": fields.String(required=True, description='Enter password')
     }
 )
 
-customer_signup_model = auth.model(
-    'Customer Signup Model',
-    {
-        'customer_name': fields.String(required=True, description='Enter customer name'),
-        'email': fields.String(required=True, description='Enter email'),
-        'phone': fields.Integer(required=True, description='Enter phone number'),
-        'password': fields.String(required=True, description='Enter password')
-    }
-)
 
-customer_login_model = auth.model(
-    "Customer Login Model",
-    {
-        'email': fields.String(required=True, description='Enter email'),
-        'password': fields.String(required=True, description='Enter password')
-    }
-)
 
-@auth.route('/staff/signup')
-class StaffSignUp(Resource):
+@auth.route('/user/signup')
+class UserSignUp(Resource):
 
-    @auth.expect(staff_signup_model)
+    @auth.expect(user_signup_model)
     def post(self):
-        """Staff SignUp"""
+        """User SignUp"""
         data = request.get_json()
 
-        staff_name = User.query.filter_by(staff_name=data.get('staff_name')).first()
+        user_name = User.query.filter_by(user_name=data.get('user_name')).first()
         email = User.query.filter_by(email=data.get('email')).first()
 
-        if staff_name:
-            return make_response(jsonify({'error': f'Staff name: {data.get("staff_name")} already exists!'}), HTTPStatus.NOT_FOUND)
+        if user_name:
+            return make_response(jsonify({'error': f'User name: {data.get("user_name")} already exists!'}), HTTPStatus.NOT_FOUND)
 
         if email:
             return make_response(jsonify({'error': f'Email: {data.get("email")} already exists!'}), HTTPStatus.NOT_FOUND)
@@ -72,106 +57,54 @@ class StaffSignUp(Resource):
         if len(data.get('password')) < 6:
             return make_response(jsonify({'error': 'Your password is too short!'}), HTTPStatus.PRECONDITION_FAILED)
 
-        staff = User(
-            staff_name=data.get('staff_name'),
+        user = User(
+            user_name=data.get('user_name'),
             email=data.get('email'),
             phone=data.get('phone'),
+            admin=data.get('admin'),
             password_hash=generate_password_hash(data.get('password'))
         )
 
-        staff.save()
+        user.save()
 
-        return make_response(jsonify({'message': 'Staff registered successfully'}), HTTPStatus.CREATED)
+        return make_response(jsonify({'message': 'User registered successfully'}), HTTPStatus.CREATED)
 
 
-@auth.route('/staff/login')
-class StaffLogin(Resource):
+@auth.route('/user/login')
+class UserLogin(Resource):
 
-    @auth.expect(staff_login_model)
+    @auth.expect(user_login_model)
     def post(self):
-        """Staff Login"""
+        """User Login"""
         email = request.json['email']
         password = request.json['password']
 
-        staff = User.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first()
 
-        if staff and check_password_hash(staff.password_hash, password):
-            access_token = create_access_token(identity=staff.staff_id)
-            refresh_token = create_refresh_token(identity=staff.staff_id)
+        if user and check_password_hash(user.password_hash, password):
+            access_token = create_access_token(identity=user.user_id)
+            refresh_token = create_refresh_token(identity=user.user_id)
 
             response = {
                 "access_token": access_token,
                 "refresh_token": refresh_token,
-                "email": staff.email,
-                "staff_name": staff.staff_name
+                "email": user.email,
+                "staff_name": user.user_name
             }
 
             return response, HTTPStatus.OK
         return make_response(jsonify({'error': 'Invalid email or Password'}), HTTPStatus.BAD_REQUEST)
 
 
-@auth.route('/customer/signup')
-class CustomerSignUp(Resource):
+@auth.route('/refresh-token')
+class Refresh(Resource):
 
-    @auth.expect(customer_signup_model)
+    @jwt_required(refresh=True)
     def post(self):
-        """Customer Signup"""
+        """Updating the access-token with the refresh-token"""
 
-        data = request.get_json()
+        user_id = get_jwt_identity()
 
-        customer_name = User.query.filter_by(customer_name=data.get('customer_name')).first()
-        email = User.query.filter_by(email=data.get('email')).first()
+        new_access_token = create_access_token(identity=user_id)
 
-        if customer_name:
-            return make_response(jsonify({'error': f'Customer name {data.get("customer_name")} already exists!'}), HTTPStatus.BAD_REQUEST)
-
-        if email:
-            return make_response(jsonify({'error': f'email: {data.get("email")} already exists!'}), HTTPStatus.BAD_REQUEST)
-
-        try:
-            email_is_valid = validate_email(data.get('email'))
-
-        except EmailNotValidError as e:
-            return make_response(jsonify({'error': str(e)}), HTTPStatus.UNPROCESSABLE_ENTITY)
-
-        customer = User(
-            customer_name = data.get('customer_name'),
-            email=data.get('email'),
-            phone=data.get('phone'),
-            password_hash=generate_password_hash(data.get('password'))
-        )
-
-        customer.save()
-
-        return make_response(jsonify({'message': 'You have been registered successfully!'}), HTTPStatus.CREATED)
-
-
-@auth.route('/customer/login')
-class CustomerLogin(Resource):
-
-    @auth.expect(customer_login_model)
-    def post(self):
-        """Customer Login"""
-
-        data = request.get_json()
-
-        email = data.get('email')
-        password = data.get('password')
-
-        customer = User.query.filter_by(email=email).first()
-
-        if customer and check_password_hash(customer.password_hash, password):
-            access_token = create_access_token(identity=customer.cust_id)
-            refresh_token = create_refresh_token(identity=customer.cust_id)
-
-            response = {
-                'access_token': access_token,
-                'refresh_token': refresh_token,
-                'email': customer.email,
-                'customer_name': customer.customer_name
-            }
-
-            return make_response(jsonify({'message': response}), HTTPStatus.OK)
-
-        return make_response(jsonify({'error': 'Incorrect email or password! Try again!'}), HTTPStatus.BAD_REQUEST)
-
+        return jsonify({'access-token': new_access_token}), HTTPStatus.OK

@@ -33,7 +33,7 @@ class User(db.Model):
         db.session.commit()
 
     def __repr__(self):
-        return f'<Staff {self.staff_name}>'
+        return f'<Staff {self.admin}>'
 
 
 class Product(db.Model):
